@@ -41,18 +41,14 @@ impl Parameters {
         hashes: u64,
         slots: u64,
         util: f64,
-    ) -> Result<Parameters, ()> {
+    ) -> Parameters {
         let mut contraints = 0;
 
-        contraints += error.is_some() as i32;
-        contraints += elements.is_some() as i32;
-        contraints += storage.is_some() as i32;
+        contraints += error.is_some() as u32;
+        contraints += elements.is_some() as u32;
+        contraints += storage.is_some() as u32;
 
-        if contraints != 2 {
-            return Err(());
-        }
-
-        Ok(Parameters {
+        let params = Parameters {
             error,
             elements: elements.map(|v| v as f64),
             storage: storage.map(|v| v as f64),
@@ -61,8 +57,13 @@ impl Parameters {
             hashes: hashes as f64,
             slots: slots as f64,
             util,
+        };
+
+        if contraints == 2 {
+            params.infer()
+        } else {
+            params
         }
-        .infer())
     }
 
     pub fn error(&self) -> Option<f64> {
@@ -107,7 +108,24 @@ impl Parameters {
     }
 
     fn infer(mut self) -> Parameters {
-        while self.incomplete() {
+        for _ in 0..8 {
+            if !self.incomplete() {
+                break;
+            }
+
+            // Infer fingerprint size, from:
+            //   - storage
+            //   - elements
+            //   - util
+            //
+            //
+            self.fingerprint = self.fingerprint.or_else(|| {
+                self.elements.and_then(|elements| {
+                    self.storage
+                        .and_then(|storage| Some(f64::floor((storage * self.util) / elements)))
+                })
+            });
+
             // Infer fingerprint size, from:
             //  - error
             //  - util
@@ -139,7 +157,6 @@ impl Parameters {
                 //  - util
                 self.buckets = self.buckets.or_else(|| {
                     self.elements.and_then(|elements| {
-                        self.storage = None; // this can affect the storage
                         let cells = f64::ceil(elements / self.util);
                         Some(f64::ceil(cells / self.slots))
                     })

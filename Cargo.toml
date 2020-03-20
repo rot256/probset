@@ -4,6 +4,16 @@ version = "0.1.0"
 authors = ["Mathias Hall-Andersen <mathias@hall-andersen.dk>"]
 edition = "2018"
 
-[lib]
-name = "probset"
-path = "lib/mod.rs"
+[dependencies]
+log = "0.4"
+web_logger = "0.2"
+rand = "0.7"
+regex = "1"    
+
+
+[dependencies.yew]
+version = "0.14"
+
+[features]
+std_web = ["rand/stdweb", "yew/std_web"]
+web_sys = ["rand/wasm-bindgen", "yew/web_sys"]
