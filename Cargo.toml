@@ -1,0 +1,9 @@
+[package]
+name = "probset"
+version = "0.1.0"
+authors = ["Mathias Hall-Andersen <mathias@hall-andersen.dk>"]
+edition = "2018"
+
+[lib]
+name = "probset"
+path = "lib/mod.rs"
