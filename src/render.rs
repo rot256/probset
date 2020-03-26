@@ -6,7 +6,7 @@ use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
 use std::option::NoneError;
 
-use super::filters::cuckoo;
+use super::filters::{cuckoo, theory};
 
 /// Specified parameters for all filters
 #[derive(Debug)]
@@ -117,7 +117,64 @@ fn count_some<T, E>(v: Result<Option<T>, E>) -> u32 {
     }
 }
 
+fn format_error(error: f64) -> String {
+    let parts: f64 = 1. / error;
+
+    if parts.is_finite() {
+        format!("{} (2^{:.2})", error, f64::log2(error))
+    } else {
+        format!("negligible (< 2^-50)")
+    }
+}
+
 impl Model {
+    fn render_theory(
+        &self,
+        storage: Result<Option<u64>, NoneError>,
+        elements: Result<Option<u64>, NoneError>,
+        error: Result<Option<f64>, NoneError>,
+    ) -> Html {
+        let err = storage.is_err() | elements.is_err() | error.is_err();
+
+        let error = if err { None } else { error.unwrap() };
+        let storage = if err { None } else { storage.unwrap() };
+        let elements = if err { None } else { elements.unwrap() };
+
+        let params = theory::Parameters::new(error, elements, storage);
+
+        html! {
+            <table class="mono">
+                <tr>
+                    <td>{"Number of items in filter"}</td>
+                    <td>{":"}</td>
+                    <td>{ if let Some(elements) = params.elements() {
+                        format!("{}", elements)
+                    } else {
+                        "".to_string()
+                    } }</td>
+                </tr>
+                <tr>
+                    <td>{"False positive rate"}</td>
+                    <td>{":"}</td>
+                    <td>{ if let Some(error) = params.error() {
+                        format_error(error)
+                    } else {
+                        "".to_string()
+                    } }</td>
+                </tr>
+                <tr>
+                    <td>{"Bits per item"}</td>
+                    <td>{":"}</td>
+                    <td>{ if let Some(bits_per_element) = params.bits_per_element() {
+                        format!("{} bits/item", bits_per_element)
+                    } else {
+                        "".to_string()
+                    } }</td>
+                </tr>
+            </table>
+        }
+    }
+
     fn render_cuckoo(
         &self,
         storage: Result<Option<u64>, NoneError>,
@@ -156,7 +213,7 @@ impl Model {
                     <td>{"False positive rate"}</td>
                     <td>{":"}</td>
                     <td>{ if let Some(error) = params.error() {
-                        format!("{} (1 in {})", error, f64::round(1. / error))
+                        format_error(error)
                     } else {
                         "".to_string()
                     } }</td>
@@ -326,6 +383,10 @@ impl Component for Model {
         html! {
             <div>
                 {self.render_input(storage, elements, error)}
+                <div>
+                    <h2>{"Theoretic Limit"}</h2>
+                    {self.render_theory(storage, elements, error)}
+                </div>
                 <div>
                     <h2>{"Cuckoo Filter"}</h2>
                     {self.render_cuckoo(storage, elements, error)}

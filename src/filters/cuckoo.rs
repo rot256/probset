@@ -146,7 +146,7 @@ impl Parameters {
                 //  - number of slots per bucket
                 //  - utilization
                 self.error = self.error.or_else(|| {
-                    let ok_one = 1. - 1. / (f64::exp2(fingerprint));
+                    let ok_one = 1. - f64::powf(2.0, -fingerprint);
                     let ok_all = ok_one.powf(self.slots * self.hashes * self.util);
                     Some(1. - ok_all)
                 });
@@ -200,6 +200,7 @@ impl Parameters {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,3 +217,4 @@ mod tests {
         assert_eq!(param.fingerprint().unwrap(), 13);
     }
 }
+*/
