@@ -1,3 +1,5 @@
+use super::FilterParameters;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Parameters {
     // user defined / infered
@@ -13,6 +15,25 @@ pub struct Parameters {
     hashes: f64, // possible buckets for each element (normally 2)
     slots: f64,  // slots per bucket (e.g. 4)
     util: f64,   // utilization, util \in (0, 1]
+}
+
+impl FilterParameters for Parameters {
+    fn error(&self) -> Option<f64> {
+        self.error
+    }
+
+    fn elements(&self) -> Option<u64> {
+        self.elements.map(|v| v as u64)
+    }
+
+    fn storage(&self) -> Option<u64> {
+        self.storage.map(|v| v as u64)
+    }
+
+    fn bits_per_element(&self) -> Option<f64> {
+        self.storage
+            .and_then(|storage| self.elements.map(|elements| storage / elements))
+    }
 }
 
 impl Parameters {
@@ -66,18 +87,6 @@ impl Parameters {
         }
     }
 
-    pub fn error(&self) -> Option<f64> {
-        self.error
-    }
-
-    pub fn elements(&self) -> Option<u64> {
-        self.elements.map(|v| v as u64)
-    }
-
-    pub fn storage(&self) -> Option<u64> {
-        self.storage.map(|v| v as u64)
-    }
-
     pub fn fingerprint(&self) -> Option<u64> {
         self.fingerprint.map(|v| v as u64)
     }
@@ -92,11 +101,6 @@ impl Parameters {
 
     pub fn util(&self) -> f64 {
         self.util
-    }
-
-    pub fn bits_per_element(&self) -> Option<f64> {
-        self.storage
-            .and_then(|storage| self.elements.map(|elements| storage / elements))
     }
 
     fn incomplete(&self) -> bool {
@@ -199,22 +203,3 @@ impl Parameters {
         self
     }
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_inference() {
-        let error = 0.099 / 100.;
-        let elements = 128040_000_000;
-        let param = Parameters::new(Some(error), Some(elements), None, 2, 4, 0.95).unwrap();
-        assert!(param.error().unwrap() <= error);
-        assert!(param.elements().unwrap() >= elements);
-
-        // obtained from SageMath implementation
-        assert_eq!(param.fingerprint().unwrap(), 13);
-    }
-}
-*/

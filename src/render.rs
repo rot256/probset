@@ -6,7 +6,7 @@ use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
 use std::option::NoneError;
 
-use super::filters::{cuckoo, theory};
+use super::filters::{bloom, cuckoo, theory, FilterParameters};
 
 /// Specified parameters for all filters
 #[derive(Debug)]
@@ -39,7 +39,7 @@ fn is_space(s: &str) -> bool {
 }
 
 fn parse_error(s: &str) -> Result<f64, NoneError> {
-    let re = Regex::new(r"^[ ]*([\d\.]+)[ ]*(%)?[ ]*$").unwrap();
+    let re = Regex::new(r"^[ ]*(.+?)[ ]*(%)?[ ]*$").unwrap();
     let caps = re.captures(s)?;
 
     // parse "base" number
@@ -127,6 +127,61 @@ fn format_error(error: f64) -> String {
     }
 }
 
+fn render_param_elements<F: FilterParameters>(params: &F) -> Html {
+    html! {
+        <tr>
+            <td>{"Number of items in filter"}</td>
+            <td>{":"}</td>
+            <td>{ if let Some(elements) = params.elements() {
+                format!("{}", elements)
+            } else {
+                "".to_string()
+            } }</td>
+        </tr>
+    }
+}
+fn render_param_error<F: FilterParameters>(params: &F) -> Html {
+    html! {
+        <tr>
+            <td>{"False positive rate"}</td>
+            <td>{":"}</td>
+            <td>{ if let Some(error) = params.error() {
+                format_error(error)
+            } else {
+                "".to_string()
+            } }</td>
+        </tr>
+    }
+}
+
+fn render_param_storage<F: FilterParameters>(params: &F) -> Html {
+    html! {
+        <tr>
+            <td>{"Storage"}</td>
+            <td>{":"}</td>
+            <td>{ if let Some(storage) = params.storage() {
+                format!("{}", storage)
+            } else {
+                "".to_string()
+            } }</td>
+        </tr>
+    }
+}
+
+fn render_param_bits<F: FilterParameters>(params: &F) -> Html {
+    html! {
+        <tr>
+            <td>{"Bits per item"}</td>
+            <td>{":"}</td>
+            <td>{ if let Some(bits_per_element) = params.bits_per_element() {
+                format!("{:.2} bits/item", bits_per_element)
+            } else {
+                "".to_string()
+            } }</td>
+        </tr>
+    }
+}
+
 impl Model {
     fn render_theory(
         &self,
@@ -144,29 +199,39 @@ impl Model {
 
         html! {
             <table class="mono">
+                { render_param_storage(&params) }
+                { render_param_elements(&params) }
+                { render_param_error(&params) }
+                { render_param_bits(&params) }
+            </table>
+        }
+    }
+
+    fn render_bloom(
+        &self,
+        storage: Result<Option<u64>, NoneError>,
+        elements: Result<Option<u64>, NoneError>,
+        error: Result<Option<f64>, NoneError>,
+    ) -> Html {
+        let err = storage.is_err() | elements.is_err() | error.is_err();
+
+        let error = if err { None } else { error.unwrap() };
+        let storage = if err { None } else { storage.unwrap() };
+        let elements = if err { None } else { elements.unwrap() };
+
+        let params = bloom::Parameters::new(error, elements, storage, None);
+
+        html! {
+            <table class="mono">
+                { render_param_storage(&params) }
+                { render_param_elements(&params) }
+                { render_param_error(&params) }
+                { render_param_bits(&params) }
                 <tr>
-                    <td>{"Number of items in filter"}</td>
+                    <td>{"Hashes"}</td>
                     <td>{":"}</td>
-                    <td>{ if let Some(elements) = params.elements() {
-                        format!("{}", elements)
-                    } else {
-                        "".to_string()
-                    } }</td>
-                </tr>
-                <tr>
-                    <td>{"False positive rate"}</td>
-                    <td>{":"}</td>
-                    <td>{ if let Some(error) = params.error() {
-                        format_error(error)
-                    } else {
-                        "".to_string()
-                    } }</td>
-                </tr>
-                <tr>
-                    <td>{"Bits per item"}</td>
-                    <td>{":"}</td>
-                    <td>{ if let Some(bits_per_element) = params.bits_per_element() {
-                        format!("{} bits/item", bits_per_element)
+                    <td>{ if let Some(hashes) = params.hashes() {
+                        format!("{}", hashes)
                     } else {
                         "".to_string()
                     } }</td>
@@ -191,38 +256,15 @@ impl Model {
 
         html! {
             <table class="mono">
+                { render_param_storage(&params) }
+                { render_param_elements(&params) }
+                { render_param_error(&params) }
+                { render_param_bits(&params) }
                 <tr>
                     <td>{"Fingerprint size"}</td>
                     <td>{":"}</td>
                     <td>{ if let Some(fingerprint) = params.fingerprint() {
                         format!("{} bits", fingerprint)
-                    } else {
-                        "".to_string()
-                    } }</td>
-                </tr>
-                <tr>
-                    <td>{"Number of items in filter"}</td>
-                    <td>{":"}</td>
-                    <td>{ if let Some(elements) = params.elements() {
-                        format!("{}", elements)
-                    } else {
-                        "".to_string()
-                    } }</td>
-                </tr>
-                <tr>
-                    <td>{"False positive rate"}</td>
-                    <td>{":"}</td>
-                    <td>{ if let Some(error) = params.error() {
-                        format_error(error)
-                    } else {
-                        "".to_string()
-                    } }</td>
-                </tr>
-                <tr>
-                    <td>{"Bits per item"}</td>
-                    <td>{":"}</td>
-                    <td>{ if let Some(bits_per_element) = params.bits_per_element() {
-                        format!("{} bits/item", bits_per_element)
                     } else {
                         "".to_string()
                     } }</td>
@@ -243,6 +285,7 @@ impl Model {
             <div>
             <form>
                 <h2>{"Constraints:"}</h2>
+                <p>{"You must specify exactly two of these constraints."}</p>
                 <fieldset>
                     <legend>{"Size of the filter (bits):"}</legend>
                     <input
@@ -301,7 +344,7 @@ impl Model {
                     </p>
                 </fieldset>
                 <fieldset>
-                    <legend>{"False positive rate:"}</legend>
+                    <legend>{"Minimum false positive rate:"}</legend>
                     <input
                         placeholder="False positive rate"
                         type="text"
@@ -333,8 +376,8 @@ impl Component for Model {
         Model {
             link,
             params: Params {
-                error: "0.01".to_string(),
-                elements: "1G".to_string(),
+                error: "0.0000001".to_string(),
+                elements: "4K".to_string(),
                 storage: "".to_string(),
             },
         }
@@ -386,6 +429,7 @@ impl Component for Model {
                 <div>
                     <h2>{"Theoretic Limit"}</h2>
                     {self.render_theory(storage, elements, error)}
+                    <p>{"This shows the information theoretic lower bound."}</p>
                 </div>
                 <div>
                     <h2>{"Cuckoo Filter"}</h2>
@@ -393,11 +437,24 @@ impl Component for Model {
                 </div>
                 <div>
                     <h2>{"Bloom Filter"}</h2>
+                    {self.render_bloom(storage, elements, error)}
                 </div>
+                <p>{ " " }</p>
                 <footer>
                     <hr></hr>
                     <center>
-                    <p>{"Mathias Hall-Andersen"}</p>
+                    <p>{ "Provided without warranty. I take no responsibility for the accuracy of the calculated parameters." }</p>
+                    <p>{ "If there are additional probabilistic you would like included, feel free to contact me:" }</p>
+                    <div id="texts" style="display:inline; white-space:nowrap;">
+                        {"Mathias Hall-Andersen <mathias"}
+                    </div>
+                    <div id="image" style="display:inline;">
+                        <img src="at.svg"/>
+                    </div>
+                    <div id="texts" style="display:inline; white-space:nowrap;">
+                        {"hall-andersen.dk>"}
+                    </div>
+                    <p>{ "(Rust) source available on " }<a href="https://github.com/rot256/probset">{ "Github" }</a></p>
                     </center>
                 </footer>
             </div>
