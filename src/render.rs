@@ -16,9 +16,6 @@ pub struct Params {
     storage: String,
 }
 
-/// Cuckoo filter hyper parameters
-pub struct CuckooParams {}
-
 pub struct Model {
     params: Params,
     link: ComponentLink<Self>,
@@ -292,7 +289,7 @@ impl Model {
         let storage = if err { None } else { storage.unwrap() };
         let elements = if err { None } else { elements.unwrap() };
 
-        let params = cuckoo::Parameters::new(error, elements, storage, 2, 4, 0.95);
+        let params = cuckoo::Parameters::new(error, elements, storage, 2, 4, 0.95, true);
 
         html! {
             <table class="mono">
@@ -310,14 +307,23 @@ impl Model {
                     } }</td>
                 </tr>
                 <tr class="specific">
+                    <td>{"Buckets"}</td>
+                    <td>{":"}</td>
+                    <td>{ if let Some(buckets) = params.buckets() {
+                        buckets.to_string()
+                    } else {
+                        "".to_string()
+                    } }</td>
+                </tr>
+                <tr class="specific">
+                    <td>{"Slots per bucket"}</td>
+                    <td>{":"}</td>
+                    <td>{ params.slots() }</td>
+                </tr>
+                <tr class="specific">
                     <td>{"Hashes"}</td>
                     <td>{":"}</td>
                     <td>{ params.hashes() }</td>
-                </tr>
-                <tr class="specific">
-                    <td>{"Slots"}</td>
-                    <td>{":"}</td>
-                    <td>{ params.slots() }</td>
                 </tr>
             </table>
         }
@@ -334,8 +340,7 @@ impl Model {
         html! {
             <div>
             <form>
-                <h2>{"Constraints:"}</h2>
-                <p>{"You must specify exactly two of these constraints."}</p>
+                <p>{"You must specify exactly two of these constraints:"}</p>
                 <fieldset>
                     <legend>{"Size of the filter (bits):"}</legend>
                     <input
@@ -394,7 +399,7 @@ impl Model {
                     </p>
                 </fieldset>
                 <fieldset>
-                    <legend>{"Minimum false positive rate:"}</legend>
+                    <legend>{"Maximum false positive rate:"}</legend>
                     <input
                         placeholder="False positive rate"
                         type="text"
@@ -475,11 +480,11 @@ impl Component for Model {
 
         html! {
             <div>
+                <h1>{"Calculator"}</h1>
                 {self.render_input(storage, elements, error)}
                 <div>
                     <h2>{"Theoretic Limit"}</h2>
                     {self.render_theory(storage, elements, error)}
-                    <p>{"This shows the information theoretic lower bound."}</p>
                 </div>
                 <div>
                     <h2>{"Cuckoo Filter"}</h2>
@@ -489,7 +494,10 @@ impl Component for Model {
                     <h2>{"Bloom Filter"}</h2>
                     {self.render_bloom(storage, elements, error)}
                 </div>
+                <h1>{"About"}</h1>
                 <p>{ " " }</p>
+                <p>{"This application enables you to compute and compare optimal parameters for different probabilistic set data structures."}</p>
+                <p>{"A probabilistic set enables " }</p>
                 <footer>
                     <hr></hr>
                     <center>

@@ -12,6 +12,7 @@ pub struct Parameters {
     buckets: Option<f64>,     // buckets in map
 
     // hyper parameters
+    save: f64,
     hashes: f64, // possible buckets for each element (normally 2)
     slots: f64,  // slots per bucket (e.g. 4)
     util: f64,   // utilization, util \in (0, 1]
@@ -62,12 +63,26 @@ impl Parameters {
         hashes: u64,
         slots: u64,
         util: f64,
+        sorted: bool,
     ) -> Parameters {
         let mut contraints = 0;
 
         contraints += error.is_some() as u32;
         contraints += elements.is_some() as u32;
         contraints += storage.is_some() as u32;
+
+        // calculate how many bits saved per cell
+        // using the partial sorting optimization.
+        let save = if sorted {
+            // log2(slots!) / slots
+            let mut comp = 0.0;
+            for i in 1..(slots + 1) {
+                comp += f64::log2(i as f64);
+            }
+            comp / (slots as f64)
+        } else {
+            0.0
+        };
 
         let params = Parameters {
             error,
@@ -78,6 +93,7 @@ impl Parameters {
             hashes: hashes as f64,
             slots: slots as f64,
             util,
+            save,
         };
 
         if contraints == 2 {
