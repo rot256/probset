@@ -91,6 +91,10 @@ impl Parameters {
         self.fingerprint.map(|v| v as u64)
     }
 
+    pub fn hashes(&self) -> u64 {
+        self.hashes as u64
+    }
+
     pub fn buckets(&self) -> Option<u64> {
         self.buckets.map(|v| v as u64)
     }

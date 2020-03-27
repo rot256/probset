@@ -109,6 +109,29 @@ fn parse_storage(s: &str) -> Result<u64, NoneError> {
     Ok(num)
 }
 
+// TODO: make it not horrible
+fn sep_1000(v: u64) -> String {
+    let mut s = v.to_string();
+    let mut r = String::new();
+    loop {
+        if s.len() <= 3 {
+            break if r.is_empty() {
+                s
+            } else {
+                format!("{},{}", s, r)
+            };
+        } else {
+            let (pre, post) = s.split_at(s.len() - 3);
+            if r.is_empty() {
+                r = post.to_string();
+            } else {
+                r = format!("{},{}", post, r);
+            }
+            s = pre.to_string();
+        }
+    }
+}
+
 fn count_some<T, E>(v: Result<Option<T>, E>) -> u32 {
     if let Ok(v) = v {
         v.is_some() as u32
@@ -160,7 +183,23 @@ fn render_param_storage<F: FilterParameters>(params: &F) -> Html {
             <td>{"Storage"}</td>
             <td>{":"}</td>
             <td>{ if let Some(storage) = params.storage() {
-                format!("{}", storage)
+                let (div, name) = match storage {
+                    x if x > 8 * 1024 * 1024 * 1024 * 1024 => (8 * 1024 * 1024 * 1024 * 1024, "PiB"),
+                    x if x > 8 * 1024 * 1024 * 1024 => (8 * 1024 * 1024 * 1024, "TiB"),
+                    x if x > 8 * 1024 * 1024 => (8 * 1024 * 1024, "GiB"),
+                    x if x > 8 * 1024 => (8 * 1024, "KiB"),
+                    _ => (1, "B")
+                };
+                if let Some(n) = storage.checked_mul(100) {
+                    if n == 0 {
+                        "overflow".to_string()
+                    } else {
+                        let n = n / div;
+                        format!("{} bits ({}.{} {})", sep_1000(storage), n / 100, n % 100, name)
+                    }
+                } else {
+                    "overflow".to_string()
+                }
             } else {
                 "".to_string()
             } }</td>
@@ -227,7 +266,8 @@ impl Model {
                 { render_param_elements(&params) }
                 { render_param_error(&params) }
                 { render_param_bits(&params) }
-                <tr>
+                <tr></tr>
+                <tr class="specific">
                     <td>{"Hashes"}</td>
                     <td>{":"}</td>
                     <td>{ if let Some(hashes) = params.hashes() {
@@ -260,7 +300,7 @@ impl Model {
                 { render_param_elements(&params) }
                 { render_param_error(&params) }
                 { render_param_bits(&params) }
-                <tr>
+                <tr class="specific">
                     <td>{"Fingerprint size"}</td>
                     <td>{":"}</td>
                     <td>{ if let Some(fingerprint) = params.fingerprint() {
@@ -268,6 +308,16 @@ impl Model {
                     } else {
                         "".to_string()
                     } }</td>
+                </tr>
+                <tr class="specific">
+                    <td>{"Hashes"}</td>
+                    <td>{":"}</td>
+                    <td>{ params.hashes() }</td>
+                </tr>
+                <tr class="specific">
+                    <td>{"Slots"}</td>
+                    <td>{":"}</td>
+                    <td>{ params.slots() }</td>
                 </tr>
             </table>
         }
@@ -444,7 +494,7 @@ impl Component for Model {
                     <hr></hr>
                     <center>
                     <p>{ "Provided without warranty. I take no responsibility for the accuracy of the calculated parameters." }</p>
-                    <p>{ "If there are additional probabilistic you would like included, feel free to contact me:" }</p>
+                    <p>{ "Suggestions and improvements are welcomed, feel free to open a ticket or pull request on " }<a href="https://github.com/rot256/probset">{ "Github" }</a>{"."}</p>
                     <div id="texts" style="display:inline; white-space:nowrap;">
                         {"Mathias Hall-Andersen <mathias"}
                     </div>
@@ -454,7 +504,6 @@ impl Component for Model {
                     <div id="texts" style="display:inline; white-space:nowrap;">
                         {"hall-andersen.dk>"}
                     </div>
-                    <p>{ "(Rust) source available on " }<a href="https://github.com/rot256/probset">{ "Github" }</a></p>
                     </center>
                 </footer>
             </div>

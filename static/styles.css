@@ -15,7 +15,7 @@
 }
 body {
     color: var(--color-on-background);
-  }
+}
 
 body {
     background-color: var(--color-background);
@@ -36,7 +36,11 @@ input {
 
 table {
     font-family: monospace;
-    font-size: large;
+}
+
+.specific {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
 }
 
 .delimiter {
