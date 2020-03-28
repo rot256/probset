@@ -8,6 +8,8 @@ ProbSet currently supports:
 - Bloom filters
 - Cuckoo filters
 
+And additionally shows the theoretic lower bound.
+
 # Resources
 
 [Cuckoo Filter: Practically Better Than Bloom](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf)
