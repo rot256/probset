@@ -157,7 +157,23 @@ fn render_param_elements<F: FilterParameters>(params: &F) -> Html {
             <td>{"Number of items in filter"}</td>
             <td>{":"}</td>
             <td>{ if let Some(elements) = params.elements() {
-                format!("{}", elements)
+                let (div, name) = match elements {
+                    x if x >= 1000 * 1000 * 1000 * 1000 => (1000 * 1000 * 1000 * 1000, "P"),
+                    x if x >= 1000 * 1000 * 1000 => (1000 * 1000 * 1000, "T"),
+                    x if x >= 1000 * 1000 => (1000 * 1000, "M"),
+                    x if x >= 1000 => (1000, "K"),
+                    _ => (1, "b")
+                };
+                if let Some(n) = elements.checked_mul(100) {
+                    if n == 0 {
+                        "overflow".to_string()
+                    } else {
+                        let n = n / div;
+                        format!("{} ({}.{:02} {})", sep_1000(elements), n / 100, n % 100, name)
+                    }
+                } else {
+                    "overflow".to_string()
+                }
             } else {
                 "".to_string()
             } }</td>
@@ -185,10 +201,10 @@ fn render_param_storage<F: FilterParameters>(params: &F) -> Html {
             <td>{":"}</td>
             <td>{ if let Some(storage) = params.storage() {
                 let (div, name) = match storage {
-                    x if x > 8 * 1024 * 1024 * 1024 * 1024 => (8 * 1024 * 1024 * 1024 * 1024, "PiB"),
-                    x if x > 8 * 1024 * 1024 * 1024 => (8 * 1024 * 1024 * 1024, "TiB"),
-                    x if x > 8 * 1024 * 1024 => (8 * 1024 * 1024, "GiB"),
-                    x if x > 8 * 1024 => (8 * 1024, "KiB"),
+                    x if x >= 8 * 1024 * 1024 * 1024 * 1024 => (8 * 1024 * 1024 * 1024 * 1024, "TiB"),
+                    x if x >= 8 * 1024 * 1024 * 1024 => (8 * 1024 * 1024 * 1024, "GiB"),
+                    x if x >= 8 * 1024 * 1024 => (8 * 1024 * 1024, "MiB"),
+                    x if x >= 8 * 1024 => (8 * 1024, "KiB"),
                     _ => (1, "B")
                 };
                 if let Some(n) = storage.checked_mul(100) {
@@ -196,7 +212,7 @@ fn render_param_storage<F: FilterParameters>(params: &F) -> Html {
                         "overflow".to_string()
                     } else {
                         let n = n / div;
-                        format!("{} bits ({}.{} {})", sep_1000(storage), n / 100, n % 100, name)
+                        format!("{} bits ({}.{:02} {})", sep_1000(storage), n / 100, n % 100, name)
                     }
                 } else {
                     "overflow".to_string()
