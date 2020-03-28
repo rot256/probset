@@ -14,6 +14,8 @@ pub struct Params {
     error: String,
     elements: String,
     storage: String,
+    cuckoo_hashes: u64,
+    cuckoo_slots: u64,
 }
 
 pub struct Model {
@@ -29,6 +31,8 @@ pub enum Msg {
     UpdateError(String),
     UpdateElements(String),
     UpdateStorage(String),
+    UpdateCuckooHashes(u64),
+    UpdateCuckooSlots(u64),
 }
 
 fn is_space(s: &str) -> bool {
@@ -282,6 +286,8 @@ impl Model {
         storage: Result<Option<u64>, NoneError>,
         elements: Result<Option<u64>, NoneError>,
         error: Result<Option<f64>, NoneError>,
+        hashes: u64,
+        slots: u64,
     ) -> Html {
         let err = storage.is_err() | elements.is_err() | error.is_err();
 
@@ -289,7 +295,7 @@ impl Model {
         let storage = if err { None } else { storage.unwrap() };
         let elements = if err { None } else { elements.unwrap() };
 
-        let params = cuckoo::Parameters::new(error, elements, storage, 2, 4, 0.95, true);
+        let params = cuckoo::Parameters::new(error, elements, storage, hashes, slots, 0.95, true);
 
         html! {
             <table class="mono">
@@ -340,7 +346,7 @@ impl Model {
         html! {
             <div>
             <form>
-                <p>{"You must specify exactly two of these constraints:"}</p>
+                <p>{"You must specify exactly two of these constraints (the third is inferred):"}</p>
                 <fieldset>
                     <legend>{"Size of the filter (bits):"}</legend>
                     <input
@@ -434,6 +440,8 @@ impl Component for Model {
                 error: "0.0000001".to_string(),
                 elements: "4K".to_string(),
                 storage: "".to_string(),
+                cuckoo_hashes: 2,
+                cuckoo_slots: 4,
             },
         }
     }
@@ -448,6 +456,12 @@ impl Component for Model {
             }
             Msg::UpdateStorage(s) => {
                 self.params.storage = s;
+            }
+            Msg::UpdateCuckooHashes(n) => {
+                self.params.cuckoo_hashes = n;
+            }
+            Msg::UpdateCuckooSlots(n) => {
+                self.params.cuckoo_slots = n;
             }
         }
         true
@@ -480,24 +494,54 @@ impl Component for Model {
 
         html! {
             <div>
-                <h1>{"Calculator"}</h1>
                 {self.render_input(storage, elements, error)}
                 <div>
-                    <h2>{"Theoretic Limit"}</h2>
+                    <h4>{"Theoretic Limit"}</h4>
                     {self.render_theory(storage, elements, error)}
                 </div>
                 <div>
-                    <h2>{"Cuckoo Filter"}</h2>
-                    {self.render_cuckoo(storage, elements, error)}
+                    <h4>{"Cuckoo Filter"}</h4>
+                    {self.render_cuckoo(storage, elements, error, self.params.cuckoo_hashes, self.params.cuckoo_slots)}
+                    /*
+                    <br></br>
+                    <fieldset>
+                        <legend>{"Cuckoo Filter Hyperparameters:"}</legend>
+                        <table>
+                            <tr>
+                                <td>{"Hashes"}</td>
+                                <td>{ ":" }</td>
+                                <td style="width: 2em">{ self.params.cuckoo_hashes }</td>
+                                <td>
+                                    <input type="range" min="2" max="32" value="2" class="slider" oninput=self.link.callback(move |e: html::InputData| {
+                                        Msg::UpdateCuckooHashes(e.value.parse().unwrap())
+                                    })></input>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>{"Slots per bucket"}</td>
+                                <td>{ ":" }</td>
+                                <td style="width: 2em">{ self.params.cuckoo_slots }</td>
+                                <td>
+                                    <input type="range" min="4" max="32" value="4" class="slider" oninput=self.link.callback(move |e: html::InputData| {
+                                        Msg::UpdateCuckooSlots(e.value.parse().unwrap())
+                                    })></input>
+                                </td>
+                            </tr>
+                        </table>
+                    </fieldset>
+                    */
                 </div>
                 <div>
-                    <h2>{"Bloom Filter"}</h2>
+                    <h4>{"Bloom Filter"}</h4>
                     {self.render_bloom(storage, elements, error)}
                 </div>
-                <h1>{"About"}</h1>
-                <p>{ " " }</p>
-                <p>{"This application enables you to compute and compare optimal parameters for different probabilistic set data structures."}</p>
-                <p>{"A probabilistic set enables " }</p>
+                <h4>{"Resources"}</h4>
+                <ul>
+                    <li><a href="https://en.wikipedia.org/wiki/Bloom_filter">{"Bloom filter (wikipedia)"}</a></li>
+                    <li><a href="https://en.wikipedia.org/wiki/Cuckoo_filter">{"Cuckoo filter (wikipedia)"}</a></li>
+                    <li><a href="https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf">{"Cuckoo Filter: Practically Better Than Bloom"}</a></li>
+                    <li><a href="https://www.vldb.org/pvldb/vol11/p1041-breslow.pdf">{"Morton Filters: Faster, Space-Efficient Cuckoo Filters via Biasing, Compression, and Decoupled Logical Sparsity"}</a></li>
+                </ul>
                 <footer>
                     <hr></hr>
                     <center>
